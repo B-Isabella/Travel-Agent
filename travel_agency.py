@@ -33,7 +33,7 @@ def get_country_info(name):
             "weather": temp_display,
             "code": data.get("cca2"),
         }
-    except:
+    except Exception:
         return None
 
 
@@ -42,8 +42,7 @@ def fetch_country_suggestions(query):
         response = requests.get(f"https://restcountries.com/v3.1/name/{query}")
         if response.status_code == 200:
             return [c["name"]["common"] for c in response.json()[:5]]
-        return []
-    except:
+    except Exception:
         return []
 
 
@@ -85,7 +84,7 @@ def main(page: ft.Page):
             suggestions_col.controls = [
                 ft.ListTile(
                     title=ft.Text(n),
-                    on_click=lambda _, n=n: select_suggestion(n)
+                    on_click=lambda e, n=n: select_suggestion(n)
                 ) for n in names
             ]
         page.update()
@@ -105,8 +104,7 @@ def main(page: ft.Page):
                 ft.Column([
                     ft.Text(data["official_name"], size=22, weight="bold", color="#E3F2FD"),
                     ft.Text(f"🌡️ {data['weather']}", size=18, color="#64B5F6", weight="bold"),
-                    ft.Text(f"📍 Capital: {data['capital']}", color="#90CAF9"),
-                ])
+                    ft.Text(f"📍 Capital: {data['capital']}", color="#90CAF9")])
             ]),
             ft.Divider(color="#424242"),
             ft.Text(f"🌐 Region: {data['region']}"),
@@ -120,26 +118,25 @@ def main(page: ft.Page):
                 icon=ft.Icons.MAP,
                 bgcolor="#1976D2",
                 color="white",
-                on_click=lambda _: page.launch_url(map_url)
-            )
-        ]
+                on_click=lambda e: page.launch_url(map_url))]
         results_area.visible = True
         page.update()
 
     search_input.on_change = on_search_change
 
-    tab1_ui = ft.Column([
-        ft.Text("🌍 Global Discovery", size=32, weight="bold", color="#BBDEFB"),
-        SectionCard(ft.Column([search_input, suggestions_col])),
-        ft.ElevatedButton(
-            "Search Details",
-            icon=ft.Icons.TRAVEL_EXPLORE,
-            bgcolor="#1976D2",
-            color="white",
-            on_click=handle_search
-        ),
-        results_area
-    ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=15)
+    tab1_ui = ft.Column(
+        [
+            ft.Text("🌍 Global Discovery", size=32, weight="bold", color="#BBDEFB"),
+            SectionCard(ft.Column([search_input, suggestions_col])),
+            ft.ElevatedButton(
+                "Search Details",
+                icon=ft.Icons.TRAVEL_EXPLORE,
+                bgcolor="#1976D2",
+                color="white",
+                on_click=handle_search),
+            results_area],
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        spacing=15)
 
     # TAB 2: TRAVEL PLANNER
 
@@ -153,8 +150,9 @@ def main(page: ft.Page):
     dest_suggestions = ft.Column(spacing=0)
 
     duration = ft.TextField(
-        label="Duration (days)", width=200,
-        keyboard_type=ft.KeyboardType.NUMBER
+        label="Duration (days)",
+        width=200,
+        keyboard_type=ft.KeyboardType.NUMBER,
     )
     notes = ft.TextField(label="Additional Notes", multiline=True, width=400)
 
@@ -172,8 +170,9 @@ def main(page: ft.Page):
             dest_suggestions.controls = [
                 ft.ListTile(
                     title=ft.Text(n),
-                    on_click=lambda _, n=n: select_dest_suggestion(n)
-                ) for n in names
+                    on_click=lambda e, n=n: select_dest_suggestion(n),
+                )
+                for n in names
             ]
         page.update()
 
@@ -194,11 +193,12 @@ def main(page: ft.Page):
         page.update()
 
     def open_date_picker(e):
-        page.open(ft.DatePicker(
-            first_date=datetime.datetime.now(),
-            last_date=datetime.datetime(2030, 12, 31),
-            on_change=on_date_change,
-        ))
+        page.open(
+            ft.DatePicker(
+                first_date=datetime.datetime.now(),
+                last_date=datetime.datetime(2030, 12, 31),
+                on_change=on_date_change
+            ))
 
     def add_plan(e):
         if not client_name.value.strip() or not dest_country.value.strip() or not duration.value.strip():
@@ -212,7 +212,7 @@ def main(page: ft.Page):
         client = client_name.value.strip()
 
         if client not in clients:
-            clients[client]=[]
+            clients[client] = []
         clients[client].append(trip)
 
         start = selected_date["val"]
@@ -228,15 +228,15 @@ def main(page: ft.Page):
             subtitle_text += f"  |  📝 {extra}"
 
         entry = ft.Container(
-            bgcolor="#1e2124", padding=10, border_radius=10,
+            bgcolor="#1e2124",
+            padding=10,
+            border_radius=10,
             content=ft.ListTile(
                 leading=ft.Icon(ft.Icons.FLIGHT_TAKEOFF, color="#64B5F6"),
                 title=ft.Text(
                     f"{dest_country.value.strip()} — {client_name.value.strip().title()}",
-                    weight="bold"
-                ),
-                subtitle=ft.Text(subtitle_text)
-            ))
+                    weight="bold"), 
+                subtitle=ft.Text(subtitle_text)))
 
         def make_delete(e_container, trip, client):
             def delete(_):
@@ -250,8 +250,10 @@ def main(page: ft.Page):
             return delete
 
         entry.content.trailing = ft.IconButton(
-            ft.Icons.DELETE, icon_color="red",
-            on_click=make_delete(entry, trip, client))
+            ft.Icons.DELETE,
+            icon_color="red",
+            on_click=make_delete(entry, trip, client),
+        )
 
         plan_list.controls.append(entry)
 
@@ -265,7 +267,6 @@ def main(page: ft.Page):
         dest_suggestions.controls = []
 
         update_costs()
-
         page.update()
 
     tab2_ui = ft.Column([
@@ -306,25 +307,6 @@ def main(page: ft.Page):
     agency_fee = 250
     client_package = ft.Column(spacing=15)
 
-    def cost_est():
-        accom_total = 0
-        transport_total = 0
-        total_days = 0
-
-        for client in clients:
-            trips = clients[client]
-            for country, days in trips:
-                accom_total += days * daily_accom_price
-                total_days += days
-            transport_total += len(trips) * transport_price
-
-        total = accom_total + transport_total + agency_fee
-        if total_days > 0:
-            avg_accs = total / total_days 
-        else:
-            avg_accs = 0
-        return accom_total, transport_total, total, avg_accs
-
     def specific_client_costs(trips):
         accom = 0
         days_total = 0
@@ -334,11 +316,8 @@ def main(page: ft.Page):
             days_total += days
 
         transport = len(trips) * transport_price
-        total = accom+transport+agency_fee
-        if days_total > 0:
-            avg = total / days_total
-        else:
-            avg = 0
+        total = accom + transport + agency_fee
+        avg = total / days_total if days_total > 0 else 0
         return accom, transport, total, avg
 
     def update_costs():
@@ -354,30 +333,31 @@ def main(page: ft.Page):
                     ft.Text(f"Agency Fee: ${agency_fee}"),
                     ft.Text(f"Average Accommodation Cost Per Day: ${avg:.2f}"),
                     ft.Divider(),
-                    ft.Text(f"Total Package Cost: ${total}", size=18, weight="bold", color="#03ad00")
+                    ft.Text(f"Total Package Cost: ${total}", size=18, weight="bold", color="#03ad00"),
                 ])
             )
-
             client_package.controls.append(card)
 
     page.update()
 
-    tab3_ui = ft.Column([
-    ft.Text("💸Prices and Packages🗂️", size=28, weight="bold", color="#CE93D8"),
-    client_package
-],
-horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-spacing=15)
+    tab3_ui = ft.Column(
+        [
+            ft.Text("💸Prices and Packages🗂️", size=28, weight="bold", color="#CE93D8"),
+            client_package
+        ],
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=15)
 
     # TABS
 
-    page.add(ft.Tabs(
-        expand=True,
-        animation_duration=300,
-        tabs=[
-            ft.Tab(text="Search",  icon=ft.Icons.SEARCH,         content=tab1_ui),
-            ft.Tab(text="Planner", icon=ft.Icons.EDIT_CALENDAR,  content=tab2_ui),
-            ft.Tab(text="Pricing", icon=ft.Icons.PAYMENTS,       content=tab3_ui),
-        ]))
+    page.add(
+        ft.Tabs(
+            expand=True,
+            animation_duration=300,
+            tabs=[
+                ft.Tab(text="Search", icon=ft.Icons.SEARCH, content=tab1_ui),
+                ft.Tab(text="Planner", icon=ft.Icons.EDIT_CALENDAR, content=tab2_ui),
+                ft.Tab(text="Pricing", icon=ft.Icons.PAYMENTS, content=tab3_ui),
+            ]))
+
 
 ft.app(target=main)
