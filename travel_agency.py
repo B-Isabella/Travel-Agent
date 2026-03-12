@@ -208,6 +208,13 @@ def main(page: ft.Page):
             return
 
         days = int(duration.value)
+        trip = (dest_country.value.strip(), days)
+        client = client_name.value.strip()
+
+        if client not in clients:
+            clients[client]=[]
+        clients[client].append(trip)
+
         start = selected_date["val"]
         if start:
             end_date = start + datetime.timedelta(days=days)
@@ -225,21 +232,26 @@ def main(page: ft.Page):
             content=ft.ListTile(
                 leading=ft.Icon(ft.Icons.FLIGHT_TAKEOFF, color="#64B5F6"),
                 title=ft.Text(
-                    f"{dest_country.value.strip()} — {client_name.value.strip()}",
+                    f"{dest_country.value.strip()} — {client_name.value.strip().title()}",
                     weight="bold"
                 ),
                 subtitle=ft.Text(subtitle_text)
             ))
 
-        def make_delete(e_container):
+        def make_delete(e_container, trip, client):
             def delete(_):
                 plan_list.controls.remove(e_container)
+                if client in clients and trip in clients[client]:
+                    clients[client].remove(trip)
+                if client in clients and len(clients[client]) == 0:
+                    del clients[client]
+                update_costs()
                 page.update()
             return delete
 
         entry.content.trailing = ft.IconButton(
             ft.Icons.DELETE, icon_color="red",
-            on_click=make_delete(entry))
+            on_click=make_delete(entry, trip, client))
 
         plan_list.controls.append(entry)
 
@@ -251,6 +263,9 @@ def main(page: ft.Page):
         date_text.color = "grey"
         date_text.italic = True
         dest_suggestions.controls = []
+
+        update_costs()
+
         page.update()
 
     tab2_ui = ft.Column([
@@ -285,10 +300,74 @@ def main(page: ft.Page):
 
     # TAB 3: PRICING
 
+    clients = {}
+    daily_accom_price = 115
+    transport_price = 200
+    agency_fee = 250
+    client_package = ft.Column(spacing=15)
+
+    def cost_est():
+        accom_total = 0
+        transport_total = 0
+        total_days = 0
+
+        for client in clients:
+            trips = clients[client]
+            for country, days in trips:
+                accom_total += days * daily_accom_price
+                total_days += days
+            transport_total += len(trips) * transport_price
+
+        total = accom_total + transport_total + agency_fee
+        if total_days > 0:
+            avg_accs = total / total_days 
+        else:
+            avg_accs = 0
+        return accom_total, transport_total, total, avg_accs
+
+    def specific_client_costs(trips):
+        accom = 0
+        days_total = 0
+
+        for country, days in trips:
+            accom += days * daily_accom_price
+            days_total += days
+
+        transport = len(trips) * transport_price
+        total = accom+transport+agency_fee
+        if days_total > 0:
+            avg = total / days_total
+        else:
+            avg = 0
+        return accom, transport, total, avg
+
+    def update_costs():
+        client_package.controls.clear()
+        for client in clients:
+            trips = clients[client]
+            accom, transport, total, avg = specific_client_costs(trips)
+            card = SectionCard(
+                ft.Column([
+                    ft.Text(client.title(), size=22, weight="bold", color="#06cfa3"),
+                    ft.Text(f"Total Accommodation Fees: ${accom}"),
+                    ft.Text(f"Transport Fees: ${transport}"),
+                    ft.Text(f"Agency Fee: ${agency_fee}"),
+                    ft.Text(f"Average Accommodation Cost Per Day: ${avg:.2f}"),
+                    ft.Divider(),
+                    ft.Text(f"Total Package Cost: ${total}", size=18, weight="bold", color="#03ad00")
+                ])
+            )
+
+            client_package.controls.append(card)
+
+    page.update()
+
     tab3_ui = ft.Column([
-       ft.Text(" Pricing & Packages", size=28, weight="bold", color="#CE93D8"),
-       SectionCard(ft.Text("...", italic=True))
-   ], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+    ft.Text("💸Prices and Packages🗂️", size=28, weight="bold", color="#CE93D8"),
+    client_package
+],
+horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+spacing=15)
 
     # TABS
 
